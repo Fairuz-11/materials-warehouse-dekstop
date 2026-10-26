@@ -12,9 +12,6 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
     protected static ?string $password;
 
     /**
@@ -26,11 +23,44 @@ class UserFactory extends Factory
     {
         return [
             'name' => fake()->name(),
+            'username' => fake()->unique()->userName(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
+            'role' => 'admin_gudang',
+            'is_active' => true,
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /**
+     * User with role admin_gudang.
+     */
+    public function adminGudang(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin_gudang',
+        ]);
+    }
+
+    /**
+     * User with role admin_kasir.
+     */
+    public function adminKasir(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'admin_kasir',
+        ]);
+    }
+
+    /**
+     * Inactive user.
+     */
+    public function inactive(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'is_active' => false,
+        ]);
     }
 
     /**
