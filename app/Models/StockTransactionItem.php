@@ -38,4 +38,9 @@ class StockTransactionItem extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function stockTransaction(): BelongsTo
+    {
+        return $this->belongsTo(StockTransaction::class);
+    }
 }

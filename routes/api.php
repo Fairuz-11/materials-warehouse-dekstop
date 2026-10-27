@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ProductController;
+use App\Http\Controllers\Api\V1\StockTransactionController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -75,6 +76,29 @@ Route::prefix('v1')->group(function () {
         ->name('api.v1.warehouse.')
         ->group(function () {
             Route::get('_probe', fn () => response()->json(['ok' => true]))->name('probe');
+        });
+
+    // ── Stock transactions (admin_gudang only) ────────────────────────────
+    Route::middleware(['auth:sanctum', 'active', 'role:admin_gudang'])
+        ->name('api.v1.')
+        ->group(function () {
+            Route::get('stock-transactions', [StockTransactionController::class, 'index'])
+                ->name('stock-transactions.index');
+
+            Route::post('stock-in', [StockTransactionController::class, 'storeIn'])
+                ->name('stock-in.store');
+
+            Route::post('stock-out', [StockTransactionController::class, 'storeOut'])
+                ->name('stock-out.store');
+
+            Route::prefix('stock-transactions/{stockTransaction}')
+                ->name('stock-transactions.')
+                ->group(function () {
+                    Route::get('', [StockTransactionController::class, 'show'])->name('show');
+                    Route::put('', [StockTransactionController::class, 'update'])->name('update');
+                    Route::post('confirm', [StockTransactionController::class, 'confirm'])->name('confirm');
+                    Route::post('cancel', [StockTransactionController::class, 'cancel'])->name('cancel');
+                });
         });
 
     // ── Kasir routes — placeholder for kasir step ────────────────────────
