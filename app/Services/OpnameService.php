@@ -14,10 +14,10 @@ use RuntimeException;
 
 class OpnameService
 {
-public function __construct(
-    private readonly TransactionNumberService $numberService,
-    private readonly OpnameNumberService $opnameNumberService
-) {}
+    public function __construct(
+        private readonly TransactionNumberService $numberService,
+        private readonly OpnameNumberService $opnameNumberService
+    ) {}
 
     /**
      * Create a draft opname and snapshot current stock for each product.
@@ -27,31 +27,31 @@ public function __construct(
         User $createdBy
     ): StockOpname {
         return DB::transaction(function () use ($data, $createdBy) {
-    if (! empty($data['idempotency_key'])) {
-        $existingOpname = StockOpname::where(
-            'idempotency_key',
-            $data['idempotency_key']
-        )->first();
+            if (! empty($data['idempotency_key'])) {
+                $existingOpname = StockOpname::where(
+                    'idempotency_key',
+                    $data['idempotency_key']
+                )->first();
 
-        if ($existingOpname) {
-            return $existingOpname->load([
-                'items.product',
-                'createdBy',
-            ]);
-        }
-    }
-$opname = $this->opnameNumberService->withNextNumber(
-    function (string $opnameNumber) use ($data, $createdBy) {
-        return StockOpname::create([
-            'opname_number' => $opnameNumber,
-            'opname_date' => $data['opname_date'],
-            'status' => StockOpname::STATUS_DRAFT,
-            'note' => $data['note'] ?? null,
-            'created_by' => $createdBy->id,
-            'idempotency_key' => $data['idempotency_key'] ?? null,
-        ]);
-    }
-);
+                if ($existingOpname) {
+                    return $existingOpname->load([
+                        'items.product',
+                        'createdBy',
+                    ]);
+                }
+            }
+            $opname = $this->opnameNumberService->withNextNumber(
+                function (string $opnameNumber) use ($data, $createdBy) {
+                    return StockOpname::create([
+                        'opname_number' => $opnameNumber,
+                        'opname_date' => $data['opname_date'],
+                        'status' => StockOpname::STATUS_DRAFT,
+                        'note' => $data['note'] ?? null,
+                        'created_by' => $createdBy->id,
+                        'idempotency_key' => $data['idempotency_key'] ?? null,
+                    ]);
+                }
+            );
 
             $productIds = collect($data['items'])
                 ->pluck('product_id')
@@ -65,15 +65,15 @@ $opname = $this->opnameNumberService->withNextNumber(
                     ->findOrFail($productId);
 
                 $inputItem = collect($data['items'])
-    ->firstWhere('product_id', $product->id);
+                    ->firstWhere('product_id', $product->id);
 
-StockOpnameItem::create([
-    'stock_opname_id' => $opname->id,
-    'product_id' => $product->id,
-    'system_stock' => $product->current_stock,
-    'physical_stock' => $inputItem['physical_stock'] ?? null,
-    'difference_reason' => $inputItem['difference_reason'] ?? null,
-]);
+                StockOpnameItem::create([
+                    'stock_opname_id' => $opname->id,
+                    'product_id' => $product->id,
+                    'system_stock' => $product->current_stock,
+                    'physical_stock' => $inputItem['physical_stock'] ?? null,
+                    'difference_reason' => $inputItem['difference_reason'] ?? null,
+                ]);
             }
 
             return $opname->load(['items.product', 'createdBy']);
@@ -190,19 +190,19 @@ StockOpnameItem::create([
 
             // One adjustment transaction is associated with this opname.
             $transaction = new StockTransaction([
-    'transaction_number' => $this->numberService->generate('stock_opname'),
-    'type' => StockTransaction::TYPE_OPNAME,
-    'status' => StockTransaction::STATUS_CONFIRMED,
-    'transaction_date' => $lockedOpname->opname_date,
-    'note' => $lockedOpname->note,
-    'reason' => 'Penyesuaian hasil stock opname '.$lockedOpname->opname_number,
-    'created_by' => $lockedOpname->created_by,
-    'confirmed_by' => $confirmedBy->id,
-    'confirmed_at' => now(),
-]);
+                'transaction_number' => $this->numberService->generate('stock_opname'),
+                'type' => StockTransaction::TYPE_OPNAME,
+                'status' => StockTransaction::STATUS_CONFIRMED,
+                'transaction_date' => $lockedOpname->opname_date,
+                'note' => $lockedOpname->note,
+                'reason' => 'Penyesuaian hasil stock opname '.$lockedOpname->opname_number,
+                'created_by' => $lockedOpname->created_by,
+                'confirmed_by' => $confirmedBy->id,
+                'confirmed_at' => now(),
+            ]);
 
-$transaction->stock_opname_id = $lockedOpname->id;
-$transaction->save();
+            $transaction->stock_opname_id = $lockedOpname->id;
+            $transaction->save();
 
             foreach ($adjustments as $adjustment) {
                 /** @var StockOpnameItem $item */
@@ -225,7 +225,11 @@ $transaction->save();
                     'stock_after' => $after,
                 ]);
 
-                if (abs($quantity) > 0.0005) {
+                // Only create a movement when there is an actual change.
+                // Use bccomp at 3dp so that physical_stock == actual_stock
+                // (exact equality) produces no movement, consistent with
+                // StockService which never creates zero-quantity movements.
+                if (bccomp((string) $quantity, '0', 3) !== 0) {
                     StockMovement::create([
                         'product_id' => $product->id,
                         'source_type' => StockTransaction::class,
