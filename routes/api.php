@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\CategoryController;
 use App\Http\Controllers\Api\V1\ProductController;
 use App\Http\Controllers\Api\V1\StockTransactionController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\V1\StockOpnameController;
 
 /*
 |--------------------------------------------------------------------------
@@ -82,6 +83,28 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['auth:sanctum', 'active', 'role:admin_gudang'])
         ->name('api.v1.')
         ->group(function () {
+            // Stock opname
+            Route::prefix('stock-opnames')
+                ->name('stock-opnames.')
+                ->group(function () {
+                    Route::get('', [StockOpnameController::class, 'index'])
+                        ->name('index');
+
+                    Route::post('', [StockOpnameController::class, 'store'])
+                        ->name('store');
+
+                    Route::get('{stockOpname}', [StockOpnameController::class, 'show'])
+                        ->name('show');
+
+                    Route::put('{stockOpname}/items', [StockOpnameController::class, 'updateItems'])
+                        ->name('items.update');
+
+                    Route::post('{stockOpname}/confirm', [StockOpnameController::class, 'confirm'])
+                        ->name('confirm');
+
+                    Route::post('{stockOpname}/cancel', [StockOpnameController::class, 'cancel'])
+                        ->name('cancel');
+                });
             Route::get('stock-transactions', [StockTransactionController::class, 'index'])
                 ->name('stock-transactions.index');
 
